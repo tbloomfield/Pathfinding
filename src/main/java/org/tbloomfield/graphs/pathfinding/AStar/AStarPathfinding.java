@@ -51,6 +51,7 @@ public class AStarPathfinding implements PathfindingAlgo {
       endNode = new Pair(maxHeight, maxWidth);
       this.rows = rows;
       closedNodes = new HashSet<>();
+      candidateNodes.clear();
     }
     
     private void toAStarNode(UINode parent, UINode uinode) { 
@@ -88,9 +89,9 @@ public class AStarPathfinding implements PathfindingAlgo {
         //the head node will always contain the best "next" node to evaluate
         UINode uinode =  candidateNodes.poll();
         
-       /* if(closedNodes.contains(uinode)) { 
+        if(closedNodes.contains(uinode)) { 
             continue;
-        }*/
+        }
         closedNodes.add(uinode);
         uinode.setVisited(true);
             

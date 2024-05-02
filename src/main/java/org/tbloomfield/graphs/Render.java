@@ -31,7 +31,7 @@ public class Render extends Application {
   
   private final static int WINDOW_SIZE = 800;
   private final static int TARGET_COLUMNS = 20;
-  private final int percentageBlocked = 20;
+  private final int percentageBlocked = 30;
   private List<List<UINode>> rows = new ArrayList<>(); //row,column list.
   
   private GraphicsContext graphicsContext2D;
