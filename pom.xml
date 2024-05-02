@@ -25,10 +25,25 @@
 			<scope>provided</scope>
 			<version>1.18.32</version>
 		</dependency>
+		
+		
+		<dependency>
+    <groupId>org.openjfx</groupId>
+    <artifactId>javafx-controls</artifactId>
+    <version>22.0.1</version>
+  </dependency>
 
 	</dependencies>
 	<build>
 		<plugins>
+        <plugin>
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-maven-plugin</artifactId>
+        <version>0.0.8</version>
+        <configuration>
+            <mainClass>Render</mainClass>
+        </configuration>
+    </plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>

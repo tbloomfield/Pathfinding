@@ -1,103 +1,149 @@
 package org.tbloomfield.graphs;
 
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.Timer;
-
-import org.tbloomfield.graphs.pathfinding.BFSPathFinding;
+import org.tbloomfield.graphs.pathfinding.BFSPathfinding;
+import org.tbloomfield.graphs.pathfinding.DFSPathfinding;
 import org.tbloomfield.graphs.pathfinding.PathfindingAlgo;
 
-public class Render extends JPanel implements ActionListener {
+import javafx.application.Application;
+import javafx.event.EventHandler;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.stage.Stage;
+import javafx.scene.layout.VBox;
+import javafx.event.ActionEvent; 
+
+import javafx.scene.Scene;
+
+/**
+ * A UI for Rending Pathfinding demonstrations. 
+ */
+public class Render extends Application {
   
   private final static int WINDOW_SIZE = 600;
-  private final static int TARGET_COLUMNS = 70;
-  private final int percentageBlocked = 20;
+  private final static int TARGET_COLUMNS = 30;
+  private final int percentageBlocked = 30;
   private List<List<UINode>> rows = new ArrayList<>(); //row,column list.
-  private static Render render;
-  private static boolean initialScreenRendered = false;
   
-  public static void main(String[] args) {
-    render = new Render();
-    render.createFrame();
-    render.initializeNodes();
-    render.initializeBlockedNodes();
-    render.startRefresh();
-    
-    while(!initialScreenRendered) {
-        try {
-            Thread.sleep(Duration.ofMillis(10));
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-    render.findPath();
-  }
+  private GraphicsContext graphicsContext2D;
+  private final ExecutorService pathfindingThread = 
+          Executors.newFixedThreadPool(1, Thread.ofVirtual().factory());
   
-  private void startRefresh() {
-      Timer _timer = new Timer(50, this);
-      _timer.start();
-  }
-  
-  private void findPath() { 
-    PathfindingAlgo algo = new BFSPathFinding();
-    algo.init(rows);
-    algo.find();
-  }
-  
-  private void createFrame() { 
-    JFrame frame = new JFrame("Disjoint Set Demo");
-    frame.setSize(WINDOW_SIZE, WINDOW_SIZE);
-    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    frame.setVisible(true);
-    frame.add(this);
-  }
-  
-  @Override
-  protected void paintComponent(Graphics g) {
-    super.paintComponent(g);
-    if (render != null) {
-        paint((Graphics2D) g);
-    }
+  private PathfindingAlgo algo = new DFSPathfinding();
+
+  public static void main(String[] args) {    
+    launch();
   }
   
   /**
-   * Ticked by the timer thread to update our canvas.
+   * Primary UI layout
    */
   @Override
-  public void actionPerformed(ActionEvent e) {
-      repaint();
-  }
-  
-  private void paint(Graphics2D g) {
-    for(List<UINode> columns: rows) {
-      for(UINode node: columns) { 
-        node.draw(g);
-      }
-    }
-    initialScreenRendered = true;
+  public void start(Stage primaryStage) {      
+      //node display
+      Canvas canvas = new Canvas();      
+      canvas.setHeight(WINDOW_SIZE);
+      canvas.setWidth(WINDOW_SIZE);
+      
+      GraphicsContext graphicsContext2D = canvas.getGraphicsContext2D();
+      VBox vbox = new VBox(canvas);
+      Scene scene = new Scene(vbox);
+      
+      //menu
+      MenuBar menuBar = addMenu();
+      ((VBox) scene.getRoot()).getChildren().addAll(menuBar);
+   
+      
+      primaryStage.setTitle("Pathfinding Demo");
+      primaryStage.setScene(scene);
+      primaryStage.show();
+
+      this.graphicsContext2D = graphicsContext2D;
+      initializeNodes();
+      initializeBlockedNodes();
+      renderAll();
   }
 
+  /**
+   * Create menubar and actions for each menu item.
+   * @return
+   */
+  private MenuBar addMenu() {
+    //traversal selection
+    Menu traverse = new Menu("Traversals");    
+    MenuItem bfs = new MenuItem("Breadth First Search");
+    bfs.setOnAction(new EventHandler<ActionEvent>() { 
+        public void handle(ActionEvent e){ 
+            algo = new BFSPathfinding();
+            resetAll();
+        }
+    });    
+    MenuItem dfs = new MenuItem("Depth First Search");
+    dfs.setOnAction(new EventHandler<ActionEvent>() { 
+        public void handle(ActionEvent e){ 
+            algo = new DFSPathfinding();
+            resetAll();
+        }
+    }); 
+    traverse.getItems().addAll(List.of(bfs, dfs));
+    //--end traversal selection
+    
+    //controls
+    Menu actions = new Menu("Actions");
+    MenuItem start = new MenuItem("Start");
+    start.setOnAction(new EventHandler<ActionEvent>() { 
+      public void handle(ActionEvent e){ 
+          findPath(); 
+      } 
+    });    
+    MenuItem reset = new MenuItem("Reset");
+    reset.setOnAction(new EventHandler<ActionEvent>() { 
+      public void handle(ActionEvent e){ 
+          rows.clear();
+          initializeNodes();
+          initializeBlockedNodes();
+          renderAll();
+      } 
+    });    
+    actions.getItems().addAll(List.of(start, reset));
+    //--end controls
+
+    // create a menubar 
+    MenuBar mb = new MenuBar(); 
+    mb.getMenus().addAll(List.of(actions, traverse));
+    return mb;
+  }
+
+  /**
+   * Executes pathfinding in a separate draw/execution thread to enable the primary
+   * draw() thread to run unimpeded. 
+   */
+  private void findPath() {
+    //wait until the first draw of our nodes has completed;
+    pathfindingThread.submit( () -> {
+        algo.init(rows);
+        algo.find();        
+    });
+  }
+
+  /**
+   * Creates initial grid of nodes.
+   */
   private void initializeNodes() {
     int cellSize = Math.round(WINDOW_SIZE / (TARGET_COLUMNS));
-    
-    for (int row = 0; row <= TARGET_COLUMNS; row++) {
+        
+    for (int row = 0; row < TARGET_COLUMNS; row++) {
       List<UINode> columnList = new ArrayList<>();
-      for (int col = 0; col <= TARGET_COLUMNS; col++) {
-        columnList.add(new UINode(cellSize, cellSize, row * cellSize, col * cellSize, row+col));
+      for (int col = 0; col < TARGET_COLUMNS; col++) {
+        columnList.add(new UINode(cellSize, cellSize, row * cellSize, col * cellSize, graphicsContext2D));
       }
       rows.add(columnList);
     }
@@ -126,6 +172,32 @@ public class Render extends JPanel implements ActionListener {
     
     //ensure that (0,0) and (target,target) are unblocked
     rows.get(0).get(0).setOpen(true);
-    rows.get(TARGET_COLUMNS).get(TARGET_COLUMNS).setOpen(true);
+    rows.get(TARGET_COLUMNS-1).get(TARGET_COLUMNS-1).setOpen(true);
   }
+  
+  /**
+   * Draws all nodes.
+   */
+  private void renderAll() {
+    for(List<UINode> row : rows) { 
+        for(UINode node : row) { 
+            node.draw();
+        }
+    }
+  }
+  
+  /**
+   * Resets all UI nodes back to original draw state.
+   */
+  private void resetAll() {
+      for(List<UINode> row : rows) { 
+        for(UINode node : row) {
+            if(node.isEndNode()) { 
+                node.setEnd(false);
+            } else if(node.isVisited()) {
+                node.setVisited(false);
+            }
+        }
+      }
+    }
 }
