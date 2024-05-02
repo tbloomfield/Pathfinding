@@ -16,12 +16,9 @@ public class DelayedDeque<T> extends ArrayDeque<T> {
     
     
     public T pop() {
-        try {
-            Thread.sleep(delay);
-        } catch (InterruptedException e) {
-            //TODO
-        } finally { 
-            return super.pop();
-        }
+      try {
+          Thread.sleep(delay);
+      } catch (InterruptedException e) {}
+      return super.pop();
     }
 }

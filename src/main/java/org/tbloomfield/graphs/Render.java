@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import org.tbloomfield.graphs.pathfinding.BFSPathfinding;
 import org.tbloomfield.graphs.pathfinding.DFSPathfinding;
 import org.tbloomfield.graphs.pathfinding.PathfindingAlgo;
+import org.tbloomfield.graphs.pathfinding.AStar.AStarPathfinding;
 
 import javafx.application.Application;
 import javafx.event.EventHandler;
@@ -28,9 +29,9 @@ import javafx.scene.Scene;
  */
 public class Render extends Application {
   
-  private final static int WINDOW_SIZE = 600;
-  private final static int TARGET_COLUMNS = 30;
-  private final int percentageBlocked = 30;
+  private final static int WINDOW_SIZE = 800;
+  private final static int TARGET_COLUMNS = 20;
+  private final int percentageBlocked = 20;
   private List<List<UINode>> rows = new ArrayList<>(); //row,column list.
   
   private GraphicsContext graphicsContext2D;
@@ -92,8 +93,15 @@ public class Render extends Application {
             algo = new DFSPathfinding();
             resetAll();
         }
+    });    
+    MenuItem astar = new MenuItem("A* Search");
+    astar.setOnAction(new EventHandler<ActionEvent>() { 
+        public void handle(ActionEvent e){ 
+            algo = new AStarPathfinding();
+            resetAll();
+        }
     }); 
-    traverse.getItems().addAll(List.of(bfs, dfs));
+    traverse.getItems().addAll(List.of(bfs, dfs, astar));
     //--end traversal selection
     
     //controls
@@ -130,6 +138,7 @@ public class Render extends Application {
     //wait until the first draw of our nodes has completed;
     pathfindingThread.submit( () -> {
         algo.init(rows);
+        renderAll(); //update draw canvas if init changes our row UI.
         algo.find();        
     });
   }
@@ -143,7 +152,10 @@ public class Render extends Application {
     for (int row = 0; row < TARGET_COLUMNS; row++) {
       List<UINode> columnList = new ArrayList<>();
       for (int col = 0; col < TARGET_COLUMNS; col++) {
-        columnList.add(new UINode(cellSize, cellSize, row * cellSize, col * cellSize, graphicsContext2D));
+        BaseNode node = new BaseNode(col, row);
+        UINode uiNode = new UINode(cellSize, cellSize, graphicsContext2D);
+        uiNode.setNode(node);
+        columnList.add(uiNode);
       }
       rows.add(columnList);
     }
@@ -180,9 +192,9 @@ public class Render extends Application {
    */
   private void renderAll() {
     for(List<UINode> row : rows) { 
-        for(UINode node : row) { 
-            node.draw();
-        }
+      for(UINode node : row) { 
+        node.draw();
+      }
     }
   }
   
@@ -192,10 +204,16 @@ public class Render extends Application {
   private void resetAll() {
       for(List<UINode> row : rows) { 
         for(UINode node : row) {
+            //reset any special node types / text overlays (such as A* nodes)
+            node.setNode(new BaseNode(node.getNode().getXPos(), node.getNode().getYPos()));
             if(node.isEndNode()) { 
                 node.setEnd(false);
-            } else if(node.isVisited()) {
+            } 
+            if(node.isVisited()) {
                 node.setVisited(false);
+            }
+            if(node.isOptimalPath()) { 
+                node.setOptimalPath(false);
             }
         }
       }
