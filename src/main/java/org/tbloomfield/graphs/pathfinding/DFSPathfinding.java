@@ -44,7 +44,8 @@ public class DFSPathfinding implements PathfindingAlgo {
     
     //go down if we haven't already been down.
     if(nextPair.row < maxHeight-1 && shouldVisit(rows.get(nextPair.row+1).get(nextPair.column))) { 
-        if(dfs(new Pair(nextPair.row+1, nextPair.column))) { 
+        if(dfs(new Pair(nextPair.row+1, nextPair.column))) {
+            node.setOptimalPath(true);
             return true;
         }
     }
@@ -52,19 +53,22 @@ public class DFSPathfinding implements PathfindingAlgo {
     //go right if we haven't already been right.
     if(nextPair.column < maxWidth-1 && shouldVisit(rows.get(nextPair.row).get(nextPair.column+1))) { 
         if(dfs(new Pair(nextPair.row, nextPair.column + 1))) {
+            node.setOptimalPath(true);
             return true;
         }
     }
     
     //go left if we haven't already been left.
     if(nextPair.column > 0 && shouldVisit(rows.get(nextPair.row).get(nextPair.column-1))) { 
-        if(dfs(new Pair(nextPair.row, nextPair.column - 1))) { 
+        if(dfs(new Pair(nextPair.row, nextPair.column - 1))) {
+            node.setOptimalPath(true);
             return true;
         }
     }      
     //go up if we haven't already been up.
     if(nextPair.row > 0 && shouldVisit(rows.get(nextPair.row-1).get(nextPair.column))) { 
-        if(dfs(new Pair(nextPair.row-1, nextPair.column))) { 
+        if(dfs(new Pair(nextPair.row-1, nextPair.column))) {
+            node.setOptimalPath(true);
             return true;
         }
     }
